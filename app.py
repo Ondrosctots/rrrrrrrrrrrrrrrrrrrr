@@ -27,29 +27,30 @@ if not token:
 
 BASE_URL = "https://api.reverb.com/api"
 
+HEADERS = {
+    "Authorization": f"Bearer {token}",
+    "Accept": "application/json"
+}
+
 # -------------------------
 # Fetch listings (cache tied to token)
 # -------------------------
 @st.cache_data(ttl=60)
 def get_all_listings(token):
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/hal+json"
-    }
+    response = requests.get(
+        f"{BASE_URL}/my/listings",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json"
+        },
+        params={
+            "state[]": ["draft", "live"],
+            "per_page": 100
+        }
+    )
 
-    def fetch(state):
-        response = requests.get(
-            f"{BASE_URL}/my/listings",
-            headers=headers,
-            params={"state": state, "per_page": 100}
-        )
-        response.raise_for_status()
-        return response.json().get("listings", [])
-
-    drafts = fetch("draft")
-    live = fetch("live")
-
-    return drafts + live
+    response.raise_for_status()
+    return response.json().get("listings", [])
 
 # -------------------------
 # Load listings
@@ -86,17 +87,12 @@ for listing in listings:
                 st.write(f"{price['amount']} {price['currency']}")
 
         with col4:
-            headers = {
-                "Authorization": f"Bearer {token}",
-                "Accept": "application/hal+json"
-            }
-
             # Draft → Publish
             if listing["state"] == "draft":
                 if st.button("🚀 Publish", key=f"publish_{listing['id']}"):
                     r = requests.post(
                         f"{BASE_URL}/listings/{listing['id']}/publish",
-                        headers=headers
+                        headers=HEADERS
                     )
                     if r.status_code == 200:
                         st.success("Listing published successfully.")
@@ -110,7 +106,7 @@ for listing in listings:
                 if st.button("⛔ End Listing", key=f"end_{listing['id']}"):
                     r = requests.post(
                         f"{BASE_URL}/listings/{listing['id']}/end",
-                        headers=headers
+                        headers=HEADERS
                     )
                     if r.status_code == 200:
                         st.success("Listing ended successfully.")
