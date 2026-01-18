@@ -29,11 +29,12 @@ BASE_URL = "https://api.reverb.com/api"
 
 HEADERS = {
     "Authorization": f"Bearer {token}",
-    "Accept": "application/hal+json"
+    "Accept": "application/hal+json",
+    "X-Api-Version": "3"
 }
 
 # -------------------------
-# Fetch ALL listings (NO state filter)
+# Fetch ALL listings (NO filters)
 # -------------------------
 @st.cache_data(ttl=60)
 def get_all_listings(token):
@@ -41,9 +42,12 @@ def get_all_listings(token):
         f"{BASE_URL}/my/listings",
         headers={
             "Authorization": f"Bearer {token}",
-            "Accept": "application/hal+json"
+            "Accept": "application/hal+json",
+            "X-Api-Version": "3"
         },
-        params={"per_page": 100}
+        params={
+            "page": 1
+        }
     )
 
     response.raise_for_status()
@@ -58,7 +62,7 @@ except Exception as e:
     st.error(f"Failed to fetch listings: {e}")
     st.stop()
 
-# Filter locally (THIS IS THE KEY FIX)
+# Filter locally
 listings = [
     l for l in all_listings
     if l.get("state") in ("draft", "live")
