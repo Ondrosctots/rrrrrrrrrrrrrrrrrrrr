@@ -29,24 +29,21 @@ BASE_URL = "https://api.reverb.com/api"
 
 HEADERS = {
     "Authorization": f"Bearer {token}",
-    "Accept": "application/hal+json",
+    "Accept": "application/json",
     "X-Api-Version": "3"
 }
 
 # -------------------------
-# Fetch ALL listings (NO filters)
+# Fetch ALL listings (NO PARAMS, TRAILING SLASH)
 # -------------------------
 @st.cache_data(ttl=60)
 def get_all_listings(token):
     response = requests.get(
-        f"{BASE_URL}/my/listings",
+        f"{BASE_URL}/my/listings/",
         headers={
             "Authorization": f"Bearer {token}",
-            "Accept": "application/hal+json",
+            "Accept": "application/json",
             "X-Api-Version": "3"
-        },
-        params={
-            "page": 1
         }
     )
 
