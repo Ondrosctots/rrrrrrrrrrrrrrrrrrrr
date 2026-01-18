@@ -29,26 +29,28 @@ BASE_URL = "https://api.reverb.com/api"
 
 HEADERS = {
     "Authorization": f"Bearer {token}",
-    "Accept": "application/json",
-    "X-Api-Version": "3"
+    "Accept": "application/hal+json",
+    "X-Api-Version": "3",
+    "User-Agent": "Reverb-Streamlit-Manager/1.0"
 }
 
 # -------------------------
-# Fetch ALL listings (NO PARAMS, TRAILING SLASH)
+# Fetch ALL listings
 # -------------------------
 @st.cache_data(ttl=60)
 def get_all_listings(token):
     response = requests.get(
-        f"{BASE_URL}/my/listings/",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
-            "X-Api-Version": "3"
-        }
+        f"{BASE_URL}/my/listings",
+        headers=HEADERS
     )
 
-    response.raise_for_status()
-    return response.json().get("listings", [])
+    if not response.ok:
+        raise Exception(f"{response.status_code} — {response.text}")
+
+    data = response.json()
+
+    # Reverb returns listings under _embedded
+    return data.get("_embedded", {}).get("listings", [])
 
 # -------------------------
 # Load listings
@@ -56,10 +58,10 @@ def get_all_listings(token):
 try:
     all_listings = get_all_listings(token)
 except Exception as e:
-    st.error(f"Failed to fetch listings: {e}")
+    st.error(f"Failed to fetch listings:\n{e}")
     st.stop()
 
-# Filter locally
+# Filter draft + live locally
 listings = [
     l for l in all_listings
     if l.get("state") in ("draft", "live")
@@ -98,7 +100,7 @@ for listing in listings:
                         f"{BASE_URL}/listings/{listing['id']}/publish",
                         headers=HEADERS
                     )
-                    if r.status_code == 200:
+                    if r.ok:
                         st.success("Listing published successfully.")
                         st.cache_data.clear()
                         st.rerun()
@@ -112,7 +114,7 @@ for listing in listings:
                         f"{BASE_URL}/listings/{listing['id']}/end",
                         headers=HEADERS
                     )
-                    if r.status_code == 200:
+                    if r.ok:
                         st.success("Listing ended successfully.")
                         st.cache_data.clear()
                         st.rerun()
