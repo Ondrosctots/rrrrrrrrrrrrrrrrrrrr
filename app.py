@@ -30,7 +30,7 @@ BASE_URL = "https://api.reverb.com/api"
 HEADERS = {
     "Authorization": f"Bearer {token}",
     "Accept": "application/hal+json",
-    "X-Api-Version": "3",
+    "Accept-Version": "3.0",
     "User-Agent": "Reverb-Streamlit-Manager/1.0"
 }
 
@@ -41,7 +41,12 @@ HEADERS = {
 def get_all_listings(token):
     response = requests.get(
         f"{BASE_URL}/my/listings",
-        headers=HEADERS
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/hal+json",
+            "Accept-Version": "3.0",
+            "User-Agent": "Reverb-Streamlit-Manager/1.0"
+        }
     )
 
     if not response.ok:
@@ -49,7 +54,7 @@ def get_all_listings(token):
 
     data = response.json()
 
-    # Reverb returns listings under _embedded
+    # Listings are inside _embedded for HAL responses
     return data.get("_embedded", {}).get("listings", [])
 
 # -------------------------
