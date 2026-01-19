@@ -1,133 +1,93 @@
 import streamlit as st
 import requests
+import pandas as pd
 
-# -------------------------
-# Streamlit config
-# -------------------------
-st.set_page_config(
-    page_title="Reverb Listing Manager",
-    layout="wide"
-)
-
-st.title("🎸 Reverb Listing Manager")
-st.caption("🔒 Your API token is used only for this session and is never stored.")
-
-# -------------------------
-# Token input (ALWAYS REQUIRED)
-# -------------------------
-token = st.text_input(
-    "Reverb API Token",
-    type="password",
-    placeholder="rbv_XXXXXXXXXXXXXXXX"
-)
-
-if not token:
-    st.warning("Please enter your Reverb API token to continue.")
-    st.stop()
-
+# Reverb API base URL
 BASE_URL = "https://api.reverb.com/api"
 
-HEADERS = {
-    "Authorization": f"Bearer {token}",
-    "Accept": "application/hal+json",
-    "Accept-Version": "3.0",
-    "User-Agent": "Reverb-Streamlit-Manager/1.0"
-}
+# Function to get listings
+def get_listings(api_token, state=None):
+    headers = {"Authorization": f"Bearer {api_token}"}
+    params = {"per_page": 100}  # Adjust as needed
+    if state:
+        params["state"] = state
+    response = requests.get(f"{BASE_URL}/listings", headers=headers, params=params)
+    if response.status_code == 200:
+        return response.json()["listings"]
+    else:
+        st.error(f"Error fetching listings: {response.status_code} - {response.text}")
+        return []
 
-# -------------------------
-# Fetch LIVE listings
-# -------------------------
-def fetch_live_listings():
-    r = requests.get(
-        f"{BASE_URL}/my/listings",
-        headers=HEADERS
-    )
-    if not r.ok:
-        raise Exception(f"Live listings error: {r.text}")
-    return r.json().get("_embedded", {}).get("listings", [])
+# Function to publish a draft listing
+def publish_listing(api_token, listing_id):
+    headers = {"Authorization": f"Bearer {api_token}"}
+    response = requests.put(f"{BASE_URL}/listings/{listing_id}/publish", headers=headers)
+    if response.status_code == 200:
+        st.success("Listing published successfully!")
+    else:
+        st.error(f"Error publishing listing: {response.status_code} - {response.text}")
 
-# -------------------------
-# Fetch DRAFT listings
-# -------------------------
-def fetch_draft_listings():
-    r = requests.get(
-        f"{BASE_URL}/my/listings/drafts",
-        headers=HEADERS
-    )
-    if not r.ok:
-        raise Exception(f"Draft listings error: {r.text}")
-    return r.json().get("_embedded", {}).get("listings", [])
+# Function to end a published listing
+def end_listing(api_token, listing_id):
+    headers = {"Authorization": f"Bearer {api_token}"}
+    response = requests.put(f"{BASE_URL}/listings/{listing_id}/end", headers=headers)
+    if response.status_code == 200:
+        st.success("Listing ended successfully!")
+    else:
+        st.error(f"Error ending listing: {response.status_code} - {response.text}")
 
-# -------------------------
-# Cached loader (token-scoped)
-# -------------------------
-@st.cache_data(ttl=60)
-def load_all_listings(token):
-    live = fetch_live_listings()
-    drafts = fetch_draft_listings()
-    return live + drafts
+# Streamlit UI
+st.title("Reverb Listings Manager")
 
-# -------------------------
-# Load listings
-# -------------------------
-try:
-    listings = load_all_listings(token)
-except Exception as e:
-    st.error(f"Failed to fetch listings:\n{e}")
-    st.stop()
+# Input API token
+api_token = st.text_input("Enter your Reverb API Token", type="password")
 
-st.subheader(f"📦 Your Listings ({len(listings)})")
-
-if not listings:
-    st.info("No draft or live listings found.")
-    st.stop()
-
-# -------------------------
-# Display listings
-# -------------------------
-for listing in listings:
-    with st.container(border=True):
-        col1, col2, col3, col4 = st.columns([4, 2, 2, 2])
-
-        with col1:
-            st.markdown(f"**{listing.get('title', 'Untitled draft')}**")
-            st.caption(f"ID: {listing['id']}")
-
-        with col2:
-            st.write(f"State: **{listing['state']}**")
-
-        with col3:
-            price = listing.get("price")
-            if price:
-                st.write(f"{price['amount']} {price['currency']}")
-            else:
-                st.write("—")
-
-        with col4:
-            # Draft → Publish
-            if listing["state"] == "draft":
-                if st.button("🚀 Publish", key=f"publish_{listing['id']}"):
-                    r = requests.post(
-                        f"{BASE_URL}/listings/{listing['id']}/publish",
-                        headers=HEADERS
-                    )
-                    if r.ok:
-                        st.success("Listing published.")
-                        st.cache_data.clear()
-                        st.rerun()
-                    else:
-                        st.error(r.text)
-
-            # Live → End
-            elif listing["state"] == "live":
-                if st.button("⛔ End Listing", key=f"end_{listing['id']}"):
-                    r = requests.post(
-                        f"{BASE_URL}/listings/{listing['id']}/end",
-                        headers=HEADERS
-                    )
-                    if r.ok:
-                        st.success("Listing ended.")
-                        st.cache_data.clear()
-                        st.rerun()
-                    else:
-                        st.error(r.text)
+if api_token:
+    # Fetch all listings (drafts and published)
+    st.header("Your Listings")
+    drafts = get_listings(api_token, state="draft")
+    published = get_listings(api_token, state="published")
+    all_listings = drafts + published
+    
+    if all_listings:
+        # Convert to DataFrame for display
+        df = pd.DataFrame([
+            {
+                "ID": listing["id"],
+                "Title": listing["title"],
+                "State": listing["state"],
+                "Price": listing.get("price", {}).get("amount", "N/A"),
+                "Condition": listing.get("condition", {}).get("display_name", "N/A")
+            }
+            for listing in all_listings
+        ])
+        st.dataframe(df)
+        
+        # Action sections
+        st.header("Actions")
+        
+        # Publish a draft
+        st.subheader("Publish a Draft Listing")
+        draft_options = [f"{listing['id']}: {listing['title']}" for listing in drafts]
+        if draft_options:
+            selected_draft = st.selectbox("Select a draft to publish", draft_options)
+            if st.button("Publish Selected Draft"):
+                listing_id = selected_draft.split(":")[0]
+                publish_listing(api_token, listing_id)
+        else:
+            st.info("No draft listings found.")
+        
+        # End a published listing
+        st.subheader("End a Published Listing")
+        published_options = [f"{listing['id']}: {listing['title']}" for listing in published]
+        if published_options:
+            selected_published = st.selectbox("Select a published listing to end", published_options)
+            if st.button("End Selected Listing"):
+                listing_id = selected_published.split(":")[0]
+                end_listing(api_token, listing_id)
+        else:
+            st.info("No published listings found.")
+    else:
+        st.info("No listings found.")
+else:
+    st.info("Please enter your API token to proceed.")
