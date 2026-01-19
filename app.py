@@ -7,7 +7,10 @@ BASE_URL = "https://api.reverb.com/api"
 
 # Function to get listings
 def get_listings(api_token, state=None):
-    headers = {"Authorization": f"Bearer {api_token}"}
+    headers = {
+        "Authorization": f"Bearer {api_token}",
+        "Accept-Version": "3.0"  # Required for Reverb API v3
+    }
     params = {"per_page": 100}  # Adjust as needed
     if state:
         params["state"] = state
@@ -20,7 +23,10 @@ def get_listings(api_token, state=None):
 
 # Function to publish a draft listing
 def publish_listing(api_token, listing_id):
-    headers = {"Authorization": f"Bearer {api_token}"}
+    headers = {
+        "Authorization": f"Bearer {api_token}",
+        "Accept-Version": "3.0"  # Required for Reverb API v3
+    }
     response = requests.put(f"{BASE_URL}/listings/{listing_id}/publish", headers=headers)
     if response.status_code == 200:
         st.success("Listing published successfully!")
@@ -29,7 +35,10 @@ def publish_listing(api_token, listing_id):
 
 # Function to end a published listing
 def end_listing(api_token, listing_id):
-    headers = {"Authorization": f"Bearer {api_token}"}
+    headers = {
+        "Authorization": f"Bearer {api_token}",
+        "Accept-Version": "3.0"  # Required for Reverb API v3
+    }
     response = requests.put(f"{BASE_URL}/listings/{listing_id}/end", headers=headers)
     if response.status_code == 200:
         st.success("Listing ended successfully!")
