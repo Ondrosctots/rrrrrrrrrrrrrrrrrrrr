@@ -27,7 +27,7 @@ def publish_listing(api_token, listing_id):
         "Authorization": f"Bearer {api_token}",
         "Accept-Version": "3.0"  # Required for Reverb API v3
     }
-    response = requests.put(f"{BASE_URL}/listings/{listing_id}/publish", headers=headers)  # Correct endpoint for publishing
+    response = requests.put(f"{BASE_URL}/my/listings/{listing_id}/publish", headers=headers)  # Changed to /my/listings for actions on own listings
     if response.status_code == 200:
         st.success("Listing published successfully!")
     else:
@@ -41,7 +41,7 @@ def end_listing(api_token, listing_id):
         "Authorization": f"Bearer {api_token}",
         "Accept-Version": "3.0"  # Required for Reverb API v3
     }
-    response = requests.put(f"{BASE_URL}/listings/{listing_id}/end", headers=headers)  # Correct endpoint for ending
+    response = requests.put(f"{BASE_URL}/my/listings/{listing_id}/end", headers=headers)  # Changed to /my/listings for actions on own listings
     if response.status_code == 200:
         st.success("Listing ended successfully!")
     else:
