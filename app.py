@@ -35,42 +35,46 @@ HEADERS = {
 }
 
 # -------------------------
-# Fetch ALL listings
+# Fetch LIVE listings
+# -------------------------
+def fetch_live_listings():
+    r = requests.get(
+        f"{BASE_URL}/my/listings",
+        headers=HEADERS
+    )
+    if not r.ok:
+        raise Exception(f"Live listings error: {r.text}")
+    return r.json().get("_embedded", {}).get("listings", [])
+
+# -------------------------
+# Fetch DRAFT listings
+# -------------------------
+def fetch_draft_listings():
+    r = requests.get(
+        f"{BASE_URL}/my/listings/drafts",
+        headers=HEADERS
+    )
+    if not r.ok:
+        raise Exception(f"Draft listings error: {r.text}")
+    return r.json().get("_embedded", {}).get("listings", [])
+
+# -------------------------
+# Cached loader (token-scoped)
 # -------------------------
 @st.cache_data(ttl=60)
-def get_all_listings(token):
-    response = requests.get(
-        f"{BASE_URL}/my/listings",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/hal+json",
-            "Accept-Version": "3.0",
-            "User-Agent": "Reverb-Streamlit-Manager/1.0"
-        }
-    )
-
-    if not response.ok:
-        raise Exception(f"{response.status_code} — {response.text}")
-
-    data = response.json()
-
-    # Listings are inside _embedded for HAL responses
-    return data.get("_embedded", {}).get("listings", [])
+def load_all_listings(token):
+    live = fetch_live_listings()
+    drafts = fetch_draft_listings()
+    return live + drafts
 
 # -------------------------
 # Load listings
 # -------------------------
 try:
-    all_listings = get_all_listings(token)
+    listings = load_all_listings(token)
 except Exception as e:
     st.error(f"Failed to fetch listings:\n{e}")
     st.stop()
-
-# Filter draft + live locally
-listings = [
-    l for l in all_listings
-    if l.get("state") in ("draft", "live")
-]
 
 st.subheader(f"📦 Your Listings ({len(listings)})")
 
@@ -86,7 +90,7 @@ for listing in listings:
         col1, col2, col3, col4 = st.columns([4, 2, 2, 2])
 
         with col1:
-            st.markdown(f"**{listing['title']}**")
+            st.markdown(f"**{listing.get('title', 'Untitled draft')}**")
             st.caption(f"ID: {listing['id']}")
 
         with col2:
@@ -96,6 +100,8 @@ for listing in listings:
             price = listing.get("price")
             if price:
                 st.write(f"{price['amount']} {price['currency']}")
+            else:
+                st.write("—")
 
         with col4:
             # Draft → Publish
@@ -106,7 +112,7 @@ for listing in listings:
                         headers=HEADERS
                     )
                     if r.ok:
-                        st.success("Listing published successfully.")
+                        st.success("Listing published.")
                         st.cache_data.clear()
                         st.rerun()
                     else:
@@ -120,7 +126,7 @@ for listing in listings:
                         headers=HEADERS
                     )
                     if r.ok:
-                        st.success("Listing ended successfully.")
+                        st.success("Listing ended.")
                         st.cache_data.clear()
                         st.rerun()
                     else:
