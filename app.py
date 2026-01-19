@@ -27,12 +27,14 @@ def publish_listing(api_token, listing_id):
         "Authorization": f"Bearer {api_token}",
         "Accept-Version": "3.0"  # Required for Reverb API v3
     }
-    response = requests.put(f"{BASE_URL}/my/listings/{listing_id}/publish", headers=headers)  # Changed to /my/listings for actions on own listings
+    url = f"{BASE_URL}/my/listings/{listing_id}/publish"  # Using /my/listings for actions on own listings
+    st.write(f"Attempting to publish listing ID {listing_id} at URL: {url}")  # Debug info
+    response = requests.put(url, headers=headers)
     if response.status_code == 200:
         st.success("Listing published successfully!")
     else:
         st.error(f"Error publishing listing: {response.status_code} - {response.text}")
-        # Additional debug: Show response details if needed
+        # Additional debug: Show response details
         st.write("Response details:", response.json() if response.headers.get('content-type') == 'application/json' else response.text)
 
 # Function to end a published listing
@@ -41,12 +43,14 @@ def end_listing(api_token, listing_id):
         "Authorization": f"Bearer {api_token}",
         "Accept-Version": "3.0"  # Required for Reverb API v3
     }
-    response = requests.put(f"{BASE_URL}/my/listings/{listing_id}/end", headers=headers)  # Changed to /my/listings for actions on own listings
+    url = f"{BASE_URL}/my/listings/{listing_id}/end"  # Using /my/listings for actions on own listings
+    st.write(f"Attempting to end listing ID {listing_id} at URL: {url}")  # Debug info
+    response = requests.put(url, headers=headers)
     if response.status_code == 200:
         st.success("Listing ended successfully!")
     else:
         st.error(f"Error ending listing: {response.status_code} - {response.text}")
-        # Additional debug: Show response details if needed
+        # Additional debug: Show response details
         st.write("Response details:", response.json() if response.headers.get('content-type') == 'application/json' else response.text)
 
 # Streamlit UI
